@@ -46,6 +46,9 @@ app.use(function(req, res, next) {
 class Session extends EventEmitter {
     static sessionList = [];
 
+    hookList = [];
+    hookId = 0;
+
     constructor() {
         super();
 
@@ -115,6 +118,8 @@ class Session extends EventEmitter {
 
         console.log('control request', req.body);
         
+
+        
         res.setHeader('Content-Type', 'application/json');
 
         let result = {};
@@ -124,6 +129,22 @@ class Session extends EventEmitter {
     }
 
     async hookRequest(req, res) {
+
+        console.log('hookRequest');
+
+        let requestObj = {
+            hookId: ++this.hookId,
+            body: req.body,            
+            headers: req.headers,
+            method: req.method,   
+            originalUrl: req.originalUrl,
+        }
+        this.hookList.push(requestObj);
+
+        console.log('requestObj', requestObj);
+
+        this.send(requestObj, 'hook');
+
 
         res.setHeader('Content-Type', 'application/json');
 
@@ -158,7 +179,7 @@ app.get('/stream', function (req, res) {
 
 });
 
-function checkSession(req) {
+function checkSession(req, res) {
     const urlParts = req.url.split('/');
     if (urlParts.length < 3) {
         console.log('control request bad url', req.url);
@@ -176,7 +197,7 @@ function checkSession(req) {
 }
 
 app.post('/control/*', async function(req, res) {
-    let sessionObj = checkSession(req);
+    let sessionObj = checkSession(req, res);
     if (!sessionObj) {
         return;
     }
@@ -184,9 +205,17 @@ app.post('/control/*', async function(req, res) {
     await sessionObj.controlRequest(req, res);
 });
 
+app.get('/hook/*', async function(req, res) {
+    let sessionObj = checkSession(req, res);
+    if (!sessionObj) {
+        return;
+    }
+
+    await sessionObj.hookRequest(req, res);
+});
 
 app.post('/hook/*', async function(req, res) {
-    let sessionObj = checkSession(req);
+    let sessionObj = checkSession(req, res);
     if (!sessionObj) {
         return;
     }
