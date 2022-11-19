@@ -1,0 +1,17 @@
+{
+  "name": "webhook-demo",
+  "description": "Webhook tutorial demo server",
+  "version": "0.0.1",
+  "private": true,
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=16"
+  },
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "eventsource": "^2.0.2",
+    "express": "^4.17.1"
+  }
+}
