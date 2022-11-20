@@ -19,7 +19,7 @@ var express = require('express');
 
 var app = express();
 
-app.use(express.raw());
+app.use(express.json());
 
 app.use(function(req, res, next) {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -100,18 +100,9 @@ class Session extends EventEmitter {
     }
 
     async controlRequest(req, res) {
-        let body;
 
-        console.log('control request typeof red.body=' + typeof req.body, req.body);
+        console.log('control request', req.body);
 
-
-        try {
-            body = JSON.parse(req.body.toString());
-        }
-        catch(e) {
-            console.log('control request exception parsing body', req.body);
-        }    
-        
         let result = {
             ok: true
         };
@@ -123,17 +114,10 @@ class Session extends EventEmitter {
     async hookRequest(req, res) {
 
         console.log('hookRequest', req.body);
-        let bodyStr;
-        if (typeof req.body == 'object') {
-            bodyStr = JSON.stringify(req.body);
-        }
-        else {
-            bodyStr = req.body;
-        }
 
         let requestObj = {
             hookId: ++this.hookId,
-            body: bodyStr,            
+            body: req.body,            
             headers: req.headers,
             method: req.method,   
             originalUrl: req.originalUrl,
