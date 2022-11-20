@@ -19,22 +19,7 @@ var express = require('express');
 
 var app = express();
 
-app.use(express.json());
-
-/*
-
-app.get('/serverConfig', function(req, res) {
-
-    res.setHeader('Content-Type', 'application/json');
-
-    let config = {
-        hubitatLight,
-    };
-
-    res.end(JSON.stringify(config));
-});
-*/
-
+app.use(express.raw());
 
 app.use(function(req, res, next) {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -115,14 +100,21 @@ class Session extends EventEmitter {
     }
 
     async controlRequest(req, res) {
+        let body;
 
-        console.log('control request', req.body);
+        console.log('control request typeof red.body=' + typeof req.body, req.body);
+
+
+        try {
+            body = JSON.parse(req.body.toString());
+        }
+        catch(e) {
+            console.log('control request exception parsing body', req.body);
+        }    
         
-
-        
-        res.setHeader('Content-Type', 'application/json');
-
-        let result = {};
+        let result = {
+            ok: true
+        };
 
         res.end(JSON.stringify(result));
 
@@ -130,11 +122,18 @@ class Session extends EventEmitter {
 
     async hookRequest(req, res) {
 
-        console.log('hookRequest');
+        console.log('hookRequest', req.body);
+        let bodyStr;
+        if (typeof req.body == 'object') {
+            bodyStr = JSON.stringify(req.body);
+        }
+        else {
+            bodyStr = req.body;
+        }
 
         let requestObj = {
             hookId: ++this.hookId,
-            body: req.body,            
+            body: bodyStr,            
             headers: req.headers,
             method: req.method,   
             originalUrl: req.originalUrl,
@@ -145,10 +144,9 @@ class Session extends EventEmitter {
 
         this.send(requestObj, 'hook');
 
-
-        res.setHeader('Content-Type', 'application/json');
-
-        let result = {};
+        let result = {
+            ok: true
+        };
 
         res.end(JSON.stringify(result));
 
@@ -180,16 +178,24 @@ app.get('/stream', function (req, res) {
 });
 
 function checkSession(req, res) {
+    res.setHeader('Content-Type', 'application/json');
+
     const urlParts = req.url.split('/');
     if (urlParts.length < 3) {
         console.log('control request bad url', req.url);
-		res.status(404).send('').end();
+        res.end(JSON.stringify({
+            ok: false,
+            errorMsg: 'invalid URL'
+        }));
         return null;
     }
     let sessionObj = Session.find(urlParts[2]);
     if (!sessionObj) {
         console.log('control request bad session ' + urlParts[2]);
-		res.status(404).send('').end();
+        res.end(JSON.stringify({
+            ok: false,
+            errorMsg: 'invalid session id'
+        }));
         return null;
     }
 
