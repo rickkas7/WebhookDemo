@@ -28,11 +28,19 @@ app.use(function(req, res, next) {
     next();
 });
 
+const hookResponseDefault = {
+    statusCode: 200,
+    body: JSON.stringify({
+        ok: true
+    }),
+};
+
 class Session extends EventEmitter {
     static sessionList = [];
 
     hookList = [];
     hookId = 0;
+    hookResponse = Object.assign({}, hookResponseDefault);
 
     constructor() {
         super();
@@ -107,6 +115,22 @@ class Session extends EventEmitter {
             ok: true
         };
 
+        /*
+        // Not currently used
+        if (req.body.op == 'hookResponse') {
+            if (req.body.default) {
+                this.hookResponse = Object.assign({}, hookResponseDefault);
+            }
+            if (req.body.statusCode) {
+                this.hookResponse.statusCode = req.body.statusCode;
+            }
+            if (req.body.body) {
+                this.hookResponse.body = req.body.body;
+            }
+            result.hookResponse = this.hookResponse;
+        }
+        */
+
         res.end(JSON.stringify(result));
 
     }
@@ -133,21 +157,19 @@ class Session extends EventEmitter {
 
         this.send(requestObj, 'hook');
 
-        let result = {
-            ok: true
-        };
-
-        const responseBody = JSON.stringify(result);
-
         const responseObj = {
             hookId: requestObj.hookId,
-            statusCode: 200,
-            body: responseBody,
+            statusCode: this.hookResponse.statusCode,
+            body: this.hookResponse.body,
         }
         this.send(responseObj, 'hookResponse');
-        
-        res.end(responseBody);
 
+        if (this.hookResponse.statusCode != 200) {
+            res.status(this.hookResponse.statusCode).end();
+        }
+        else {
+            res.end(responseObj.body);
+        }
     }
 
     static find(sessionId) {
