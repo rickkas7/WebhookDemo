@@ -30,9 +30,9 @@ app.use(function(req, res, next) {
 
 const hookResponseDefault = {
     statusCode: 200,
-    body: JSON.stringify({
+    body: {
         ok: true
-    }),
+    },
 };
 
 class Session extends EventEmitter {
@@ -53,7 +53,7 @@ class Session extends EventEmitter {
         // Code stolen from express-sse, which I can't use directly because I want each
         // session to have its own SSE stream.
 
-        console.log('starting session for ' + this.sessionId);
+        // console.log('starting session for ' + this.sessionId);
 
         let id = 0;
 
@@ -95,7 +95,7 @@ class Session extends EventEmitter {
     }
 
     close() {
-        console.log('on close');
+        // console.log('on close ' + this.sessionId);
 
         this.removeListener('data', this.sseDataListener);
 
@@ -109,7 +109,7 @@ class Session extends EventEmitter {
 
     async controlRequest(req, res) {
 
-        console.log('control request', req.body);
+        // console.log('control request', req.body);
 
         let result = {
             ok: true
@@ -125,7 +125,7 @@ class Session extends EventEmitter {
                 this.hookResponse.statusCode = req.body.statusCode;
             }
             if (req.body.body) {
-                this.hookResponse.body = req.body.body;
+                this.hookResponse.body = JSON.parse(req.body.body);
             }
             result.hookResponse = this.hookResponse;
         }
@@ -137,7 +137,7 @@ class Session extends EventEmitter {
 
     async hookRequest(req, res) {
 
-        console.log('hookRequest', req.body);
+        // console.log('hookRequest', req.body);
 
         let headers = '';
         for(let ii = 0; ii < req.rawHeaders.length; ii += 2) {
@@ -150,6 +150,7 @@ class Session extends EventEmitter {
             headers,
             method: req.method,   
             originalUrl: req.originalUrl,
+            query: JSON.stringify(req.query),
         }
         this.hookList.push(requestObj);
 
@@ -157,11 +158,26 @@ class Session extends EventEmitter {
 
         this.send(requestObj, 'hook');
 
-        const responseObj = {
+        let respBody = Object.assign({}, this.hookResponse.body);
+
+        try {
+            const reqDataObj = JSON.parse(req.body.data)
+
+            if (reqDataObj.id) {
+                respBody.id = reqDataObj.id;
+            }
+        }
+        catch(e) {
+
+        }
+
+
+        let responseObj = {
             hookId: requestObj.hookId,
             statusCode: this.hookResponse.statusCode,
-            body: this.hookResponse.body,
+            body: JSON.stringify(respBody),
         }
+
         this.send(responseObj, 'hookResponse');
 
         if (this.hookResponse.statusCode != 200) {
@@ -202,7 +218,6 @@ function checkSession(req, res) {
 
     const urlParts = req.url.split('/');
     if (urlParts.length < 3) {
-        console.log('control request bad url', req.url);
         res.end(JSON.stringify({
             ok: false,
             errorMsg: 'invalid URL'
@@ -211,7 +226,6 @@ function checkSession(req, res) {
     }
     let sessionObj = Session.find(urlParts[2]);
     if (!sessionObj) {
-        console.log('control request bad session ' + urlParts[2]);
         res.end(JSON.stringify({
             ok: false,
             errorMsg: 'invalid session id'
