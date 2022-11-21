@@ -37,7 +37,7 @@ class Session extends EventEmitter {
     constructor() {
         super();
 
-        this.sessionId = crypto.randomUUID().split('-')[0];
+        this.sessionId = crypto.randomUUID();
         Session.sessionList.push(this);
     }
 
