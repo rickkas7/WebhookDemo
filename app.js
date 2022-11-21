@@ -37,7 +37,7 @@ class Session extends EventEmitter {
     constructor() {
         super();
 
-        this.uuid = crypto.randomUUID();
+        this.sessionId = crypto.randomUUID().split('-')[0];
         Session.sessionList.push(this);
     }
 
@@ -45,7 +45,7 @@ class Session extends EventEmitter {
         // Code stolen from express-sse, which I can't use directly because I want each
         // session to have its own SSE stream.
 
-        console.log('starting session for ' + this.uuid);
+        console.log('starting session for ' + this.sessionId);
 
         let id = 0;
 
@@ -92,7 +92,7 @@ class Session extends EventEmitter {
         this.removeListener('data', this.sseDataListener);
 
         for(let ii = 0; ii < Session.sessionList.length; ii++) {
-            if (Session.sessionList[ii].uuid == this.uuid) {
+            if (Session.sessionList[ii].sessionId == this.sessionId) {
                 Session.sessionList.splice(ii, 1);
                 break;
             }
@@ -115,10 +115,15 @@ class Session extends EventEmitter {
 
         console.log('hookRequest', req.body);
 
+        let headers = '';
+        for(let ii = 0; ii < req.rawHeaders.length; ii += 2) {
+            headers += req.rawHeaders[ii] + ': ' + req.rawHeaders[ii+1] + '\n';
+        }
+
         let requestObj = {
             hookId: ++this.hookId,
-            body: req.body,            
-            headers: req.headers,
+            body: JSON.stringify(req.body, null, 4),
+            headers,
             method: req.method,   
             originalUrl: req.originalUrl,
         }
@@ -132,13 +137,22 @@ class Session extends EventEmitter {
             ok: true
         };
 
-        res.end(JSON.stringify(result));
+        const responseBody = JSON.stringify(result);
+
+        const responseObj = {
+            hookId: requestObj.hookId,
+            statusCode: 200,
+            body: responseBody,
+        }
+        this.send(responseObj, 'hookResponse');
+        
+        res.end(responseBody);
 
     }
 
-    static find(uuid) {
+    static find(sessionId) {
         for(let ii = 0; ii < Session.sessionList.length; ii++) {
-            if (Session.sessionList[ii].uuid == uuid) {
+            if (Session.sessionList[ii].sessionId == sessionId) {
                 return Session.sessionList[ii];
             }
         }
@@ -154,7 +168,7 @@ app.get('/stream', function (req, res) {
     sessionObj.init(req, res);
 
     const startData = {
-        uuid: sessionObj.uuid,
+        sessionId: sessionObj.sessionId,
     };
 
     sessionObj.send(startData, 'start');
