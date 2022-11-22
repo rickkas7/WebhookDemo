@@ -154,7 +154,7 @@ class Session extends EventEmitter {
         }
         this.hookList.push(requestObj);
 
-        console.log('requestObj', requestObj);
+        //console.log('requestObj', requestObj);
 
         this.send(requestObj, 'hook');
 
