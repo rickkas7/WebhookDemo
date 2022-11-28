@@ -3,64 +3,18 @@
 
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 
 const http = require('http');
 const https = require('https');
 
 const uuid = require('uuid');
 
-let serverPort = process.env.SERVER_PORT || 5123;
-let tlsServerPort = process.env.TLS_SERVER_PORT || 5124;
+let serverPort = process.env.SERVER_PORT || 7101;
 
 const EventEmitter = require('events').EventEmitter;
 
 
 var publicPath = path.join(__dirname, 'public');
-
-
-// Load server keys config
-const localCertsDir = 'LocalCerts';
-const serverKeysConfigs = JSON.parse(fs.readFileSync(path.join(__dirname, localCertsDir, 'config.json'), 'utf8'));
-let serverKeyConfig;
-{
-    const ifaces = os.networkInterfaces();
-    
-    // http://stackoverflow.com/questions/3653065/get-local-ip-address-in-node-js
-    Object.keys(ifaces).forEach(function (ifname) {
-        ifaces[ifname].forEach(function (iface) {
-            if ('IPv4' !== iface.family || iface.internal !== false) {
-                // skip over internal (i.e. 127.0.0.1) and non-ipv4 addresses
-                return;
-            }
-            console.log("found address " + ifname + ": " + iface.address);
-            
-            for(const sc of serverKeysConfigs.certs) {
-                if (sc.addr == iface.address) {
-                    serverKeyConfig = sc;
-                }
-            }
-        });
-    });    
-}
-if (!serverKeyConfig) {
-    console.log('no server key configured for this IP address, using localhost');
-    serverKeyConfig = {
-        addr: '127.0.0.1',
-        name: 'localhost'
-    }
-}
-if (serverKeyConfig) {
-    if (serverKeyConfig.serverPort) {
-        serverPort = serverKeyConfig.serverPort;
-    }
-    if (serverKeyConfig.tlsServerPort) {
-        tlsServerPort = serverKeyConfig.tlsServerPort;
-    }
-    serverKeyConfig.cert = fs.readFileSync(path.join(__dirname, localCertsDir, serverKeyConfig.name + '.crt'));
-    serverKeyConfig.key = fs.readFileSync(path.join(__dirname, localCertsDir, serverKeyConfig.name + '.key'));
-}
-
 
 var express = require('express');
 
@@ -321,16 +275,3 @@ var server = http.createServer(serverOptions, app).listen(serverPort, function (
     console.log("listening for http on port " + serverPort);
 });
 
-
-if (serverKeyConfig) {
-    var tlsServerOptions = {
-        key: serverKeyConfig.key,
-        cert: serverKeyConfig.cert,
-    };
-    
-    
-    var tlsServer = https.createServer(tlsServerOptions, app).listen(tlsServerPort, function(){
-        console.log("listening on port " + tlsServerPort + " with TLS");
-    });
-    
-}
